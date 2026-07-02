@@ -102,7 +102,7 @@ The BitVM2 Graph provides a clear visual representation of how the GOAT BitVM2 p
 ### Case 3: Challenge Successful (Operator Misconduct Slashed)
 
 - **Status:** Withdrawal Intercepted (Disprove Stage)
-- **Description:** A Challenger detected Operator misconduct and successfully initiated a dispute. The Operator failed to provide valid Watchtower Proofs or submitted an invalid Assert. Consequently, the challenge was upheld, the Operator's collateral was slashed, and the reimbursement was denied. The Challenger/Relayer received compensation for the protocol's security maintenance.
+- **Description:** A Verifier detected Operator misconduct and successfully initiated a dispute. The Operator failed to provide valid Watchtower Proofs or submitted an invalid Assert. Consequently, the challenge was upheld, the Operator's collateral was slashed, and the reimbursement was denied. The Verifier/Relayer received compensation for the protocol's security maintenance.
 
 ### Case 4: Challenge Failed (Successful Reimbursement via Take-2)
 
@@ -118,7 +118,7 @@ The BitVM2 Graph provides a clear visual representation of how the GOAT BitVM2 p
 - The L1 address must maintain sufficient balance to pay **watchtower challenge fees**.
 - Each challenge costs approximately **4,000 sats**.
 
-#### 2. Challenger: Permissionless
+#### 2. Verifier
 - The L1 address must maintain sufficient balance to cover:
   - **Challenge transaction fees**
   - **Challenge bond**
@@ -140,32 +140,37 @@ The BitVM2 Graph provides a clear visual representation of how the GOAT BitVM2 p
   - If a graph is skipped (e.g., another operator initiates `take1` / `take2` for the same instance): ~**300 sats**
 
 **Layer 2 (GOAT Network)**
-- The operator must stake **PBTC** on L2.  
-  > In theory, the staking token should not be PBTC; Currently PBTC is used on testnet for convenience.
+- The operator must register its BitVM public key and stake **WGBTC** on L2.
 
 **Addresses**
-- **Testnet Gateway:** [`0x440c6dCA87C3511E1eBf4FDB1f584ddaA49dD029`](https://explorer.testnet3.goat.network/address/0x440c6dCA87C3511E1eBf4FDB1f584ddaA49dD029)
-- **Testnet StakeManagement Contract:** [`0x4B6BD356FE9Ad077c6E3691BB2838e814B3F4032`](https://explorer.testnet3.goat.network/address/0x4B6BD356FE9Ad077c6E3691BB2838e814B3F4032)
-- **Testnet PegBTC Contract:** [`0xdA97429ea2082334C63813f092B6A6209bfC4DEb`](https://explorer.testnet3.goat.network/address/0xdA97429ea2082334C63813f092B6A6209bfC4DEb)
+- **Gateway:** [`0x0c7821F1C72181a2C710Eaa91d81120d7e009e41`](https://explorer.testnet3.goat.network/address/0x0c7821F1C72181a2C710Eaa91d81120d7e009e41)
+- **Swap:** [`0x3FbbA0eb82cf1247cbf92B3D51641226310F0Ca5`](https://explorer.testnet3.goat.network/address/0x3FbbA0eb82cf1247cbf92B3D51641226310F0Ca5)
+- **WGBTC Token:** [`0xbC10000000000000000000000000000000000000`](https://explorer.testnet3.goat.network/address/0xbC10000000000000000000000000000000000000)
 
 **Staking Process**
 1. Call `stakeManagement.registerPubkey(xonly-pubkey)`
-2. Call `PegBTC.approve(stakeManagement_addr, amount)`
+2. Call `WGBTC.approve(stakeManagement_addr, amount)`
 3. Call `stakeManagement.stake(amount)`
 4. Call `stakeManagement.lockStake(amount)`
 
 **Requirements**
-1. A compressed public key is typically **33 bytes**, starting with `02` or `03`.  
-   The **x-only public key** is the following **32 bytes** (i.e., remove the leading `02` or `03`).  
-   It is recommended that the node provides a method to derive the x-only public key from `BITVM_SECRET`.
+1. A compressed public key is typically **33 bytes**, starting with `02` or `03`.
+The **x-only public key** is the following **32 bytes** (i.e., remove the leading `02` or `03`).
+It is recommended that the node provides a method to derive the x-only public key from `BITVM_SECRET`.
 2. `lockStake_amount ≤ stake_amount ≤ approve_amount`
-3. `lockStake_amount ≥ 60000000000000000 (0.06 PBTC)`  
-   Each `disprove` slashes **0.03 PBTC**.  
-   Once the stake drops below **0.06 PBTC**, no new graphs can be generated.
+3. `lockStake_amount ≥ 60000000000000000 (0.06 PBTC)`
+Each `disprove` slashes **0.03 PBTC**.
+Once the stake drops below **0.06 PBTC**, no new graphs can be generated.
 
 More details see our [GOAT BitVM2 White Paper](https://www.goat.network/bitvm2-whitepaper).
 
-To become an operator or challenger, you need to run a BitVM2 Node.
+To become an operator or verifier, you need to run a BitVM2 Node.
+
+### Recommended Machine Configuration
+
+| Role | CPU | RAM | Disk |
+| --- | ---: | ---: | ---: |
+| Operator / Verifier | 32 vCPU | 64 GiB | 500 GB NVMe |
 
 ### Run BitVM2 Node
 
@@ -173,53 +178,170 @@ To become an operator or challenger, you need to run a BitVM2 Node.
 
 - Build from sourcecode
 
+Ensure the ZKM toolchain is installed. See [ProjectZKM/toolchain](https://github.com/ProjectZKM/toolchain), then confirm `~/.zkm-toolchain/env` exists.
+
 ```shell
-cargo install --git https://github.com/GOATNetwork/bitvm2-node bitvm2-noded
+source ~/.zkm-toolchain/env
+cargo install --git https://github.com/GOATNetwork/bitvm2-node bitvm-noded
 ```
 
 - Download from Github releases
 
 Download the binary from [bitvm2-noded releases](https://github.com/GOATNetwork/bitvm2-node/releases).
 
-After the installation, run the `bitvm2-noded --version` to check that the version should be 0.1.0.
+After the installation, run the `bitvm-noded --version` to check that the version should be 0.4.0.
 
 ```shell
-$ bitvm2-noded --version
-bitvm2-noded 0.3.1
+$ bitvm-noded --version
+bitvm-noded 0.4.0
 ```
 
-#### Run a Node
+#### Generate Peer Key
 
-You generate a file .env in your workspace, you can also download a .env template from [here](https://github.com/GOATNetwork/bitvm2-node/blob/dev/deployment/testnet4/bitvm2-nodes/challenge_0/.env.challenge_0).
-
-Specially, you need to prepare for your keys as below.
-
-- **PEER_KEY**: Node peer key
+Generate one peer key per node:
 
 ```shell
-$ bitvm2-noded key peer
+$ bitvm-noded key peer
 PEER_KEY=
 PEER_ID=
 ```
 
-- **BITVM_SECRET**: Your Hex-format private key, which is used to submit a challenge to the operator's reimbursement in BitVM2 graph.
+Use `PEER_KEY` in the node `.env`.
 
-After you set up the .env, you need to deposit some tBTC4 (Bitcoin Testnet4) to your P2WSH address:
+#### Prepare GC Artifacts
 
-```shell
-$ bitvm2-noded key funding-address
-Funding P2WSH address (for operator and challenger): tb1q…
+Operator and Verifier nodes must have the GC artifacts on disk before running C&C. Point the runtime to those files with:
+
+```env
+FGC_GATES_PATH=
+FGC_OUT_INDICES_PATH=
+SGC_GATES_PATH=
+SGC_OUT_INDICES_PATH=
+FGC_COMPACT_GATES_PATH=
+FGC_COMPACT_OUT_INDICES_PATH=
+SGC_COMPACT_GATES_PATH=
+SGC_COMPACT_OUT_INDICES_PATH=
 ```
 
-It prints a seed and a P2WSH funding address.
+#### Funding Address
 
-Run the node with [run.sh](https://github.com/GOATNetwork/bitvm2-node/blob/dev/deployment/testnet4/bitvm2-nodes/challenge_0/run.sh)(This is a link to our github).
+Set `BITVM_SECRET` to your hex-format private key, then deposit tBTC4 (Bitcoin Testnet4) to the generated P2WSH address:
+
+```shell
+$ bitvm-noded key funding-address
+Funding P2WSH address (for operator and verifier): tb1q...
+```
+
+#### Operator Node Deployment
+
+Create an Operator `.env`:
+
+```env
+RUST_LOG=info
+ACTOR=Operator
+
+BTC_CHAIN_URL=https://mempool.space/testnet4/api
+GOAT_PROOF_BUILD_URL=http://16.146.8.146:8900
+
+GOAT_GATEWAY_CONTRACT_ADDRESS=
+GOAT_GATEWAY_EVENT_THE_GRAPH_URL=
+GOAT_GATEWAY_EVENT_FILTER_FROM=
+GOAT_SWAP_CONTRACT_ADDRESS=0x3FbbA0eb82cf1247cbf92B3D51641226310F0Ca5
+GOAT_SWAP_EVENT_THE_GRAPH_URL=https://graph.goat.network/subgraphs/name/bitvm2_escrow_manager_0x3Fbb
+GOAT_SWAP_EVENT_FILTER_FROM=14587962
+
+GOAT_CHAIN_URL=https://rpc.testnet3.goat.network
+PEER_KEY=
+BITVM_SECRET=
+GOAT_ADDRESS=
+PROTO_NAME=bitvm2t4
+BOOTNODES=/ip4/16.146.8.146/tcp/8445/p2p/12D3KooWCrPTAmhFdC5DBGgkxZvJi6iuSeiDWKRL87isrt4iMHXv
+
+SOLDERING_PROOF_PAYLOAD_STORE_PATH=
+
+OPERATOR_VK_HASH=0x00d9cbe73ff862786141fb11376884c0052ae94631ad97bfc892e01680d623fe
+OPERATOR_ZKM_VERSION=v1.2.5
+GENESIS_SEQUENCER_COMMIT_TXID=9c730b76ee4793248a3b1e605745f0c102207f60eb5023850e3e121c5f539303
+
+CAC_BATCH_SIZE=100
+
+FGC_GATES_PATH=
+FGC_OUT_INDICES_PATH=
+SGC_GATES_PATH=
+SGC_OUT_INDICES_PATH=
+FGC_COMPACT_GATES_PATH=
+FGC_COMPACT_OUT_INDICES_PATH=
+SGC_COMPACT_GATES_PATH=
+SGC_COMPACT_OUT_INDICES_PATH=
+```
+
+Start the Operator:
+
+```shell
+./bitvm-noded \
+  --rpc-addr 0.0.0.0:8901 \
+  --p2p-port 8445 \
+  --db-path sqlite:./operator.db \
+  --bootnodes /ip4/16.146.8.146/tcp/8445/p2p/12D3KooWCrPTAmhFdC5DBGgkxZvJi6iuSeiDWKRL87isrt4iMHXv
+```
+
+#### Verifier Node Deployment
+
+Create a Verifier `.env`:
+
+```env
+RUST_LOG=info
+ACTOR=Verifier
+
+BITCOIN_NETWORK=testnet4
+BTC_CHAIN_URL=https://mempool.space/testnet4/api
+
+GOAT_GATEWAY_CONTRACT_ADDRESS=
+GOAT_GATEWAY_EVENT_THE_GRAPH_URL=
+GOAT_GATEWAY_EVENT_FILTER_FROM=
+GOAT_SWAP_CONTRACT_ADDRESS=0x3FbbA0eb82cf1247cbf92B3D51641226310F0Ca5
+GOAT_SWAP_EVENT_THE_GRAPH_URL=https://graph.goat.network/subgraphs/name/bitvm2_escrow_manager_0x3Fbb
+GOAT_SWAP_EVENT_FILTER_FROM=14587962
+
+GOAT_CHAIN_URL=https://rpc.testnet3.goat.network
+GOAT_ADDRESS=
+PEER_KEY=
+BITVM_SECRET=
+PROTO_NAME=bitvm2t4
+BOOTNODES=/ip4/16.146.8.146/tcp/8445/p2p/12D3KooWCrPTAmhFdC5DBGgkxZvJi6iuSeiDWKRL87isrt4iMHXv
+
+OPERATOR_VK_HASH=0x00d9cbe73ff862786141fb11376884c0052ae94631ad97bfc892e01680d623fe
+OPERATOR_ZKM_VERSION=v1.2.5
+GENESIS_SEQUENCER_COMMIT_TXID=9c730b76ee4793248a3b1e605745f0c102207f60eb5023850e3e121c5f539303
+
+SOLDERING_PROOF_PAYLOAD_STORE_PATH=
+CAC_BATCH_SIZE=100
+
+FGC_GATES_PATH=
+FGC_OUT_INDICES_PATH=
+SGC_GATES_PATH=
+SGC_OUT_INDICES_PATH=
+FGC_COMPACT_GATES_PATH=
+FGC_COMPACT_OUT_INDICES_PATH=
+SGC_COMPACT_GATES_PATH=
+SGC_COMPACT_OUT_INDICES_PATH=
+```
+
+Start the Verifier:
+
+```shell
+./bitvm-noded \
+  --rpc-addr 0.0.0.0:8902 \
+  --p2p-port 8446 \
+  --db-path sqlite:./verifier.db \
+  --bootnodes /ip4/16.146.8.146/tcp/8445/p2p/12D3KooWCrPTAmhFdC5DBGgkxZvJi6iuSeiDWKRL87isrt4iMHXv
+```
 
 ## Operate with Agent Skills
 
 You can use agent skills to let the agent execute BitVM2 node operations end-to-end.
 
-All operation docs are maintained in the BitVM2 Node repository:
+Relevant operation docs are maintained in the BitVM2 Node repository:
 
 - [`.claude/commands` on GitHub](https://github.com/GOATNetwork/bitvm2-node/tree/dev/.claude/commands)
 
@@ -235,7 +357,6 @@ All operation docs are maintained in the BitVM2 Node repository:
 | Agent Skill            | Purpose                           | Command Doc                                                                                                             |
 |------------------------|-----------------------------------|-------------------------------------------------------------------------------------------------------------------------|
 | `/run-operator-node`   | Start an operator node            | [`run-operator-node.md`](https://github.com/GOATNetwork/bitvm2-node/blob/dev/.claude/commands/run-operator-node.md)     |
-| `/run-challenger-node` | Start a challenger node           | [`run-challenger-node.md`](https://github.com/GOATNetwork/bitvm2-node/blob/dev/.claude/commands/run-challenger-node.md) |
 | `/pegin-request`       | Request/prepare/cancel pegin flow | [`pegin-request.md`](https://github.com/GOATNetwork/bitvm2-node/blob/dev/.claude/commands/pegin-request.md)             |
 | `/pegout`              | Initiate pegout as operator       | [`pegout.md`](https://github.com/GOATNetwork/bitvm2-node/blob/dev/.claude/commands/pegout.md)                           |
 | `/bridge-out`          | Initiate bridge out flow          | [`bridge-out.md`](https://github.com/GOATNetwork/bitvm2-node/blob/dev/.claude/commands/bridge-out.md)                   |
